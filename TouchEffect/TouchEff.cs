@@ -8,13 +8,13 @@ using System.ComponentModel;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
-using TouchEffect.Interfaces;
 
 namespace TouchEffect
 {
-    public class TouchEff : RoutingEffect, ITouchEff
+    public class TouchEff : RoutingEffect
     {
         private readonly TouchVisualManager _visualManager;
+        private VisualElement _control;
 
         public TouchEff() : base($"{nameof(TouchEffect)}.{nameof(TouchEff)}")
         {
@@ -22,12 +22,16 @@ namespace TouchEffect
             StateChanged += (sender, args) => ForceUpdateState();
         }
 
-        internal TouchEff(Func<ITouchEff, TouchState, int, CancellationToken, Task> animationTaskGetter) : this()
+        internal TouchEff(Func<TouchEff, TouchState, int, CancellationToken, Task> animationTaskGetter) : this()
             => _visualManager.SetCustomAnimationTask(animationTaskGetter);
 
         public event TEffectStatusChangedHandler StatusChanged;
 
         public event TEffectStateChangedHandler StateChanged;
+
+        public event TEffectHoverStatusChangedHandler HoverStatusChanged;
+
+        public event TEffectHoverStateChangedHandler HoverStateChanged;
 
         public event TEffectCompletedHandler Completed;
 
@@ -59,8 +63,33 @@ namespace TouchEffect
             TouchState.Regular,
             BindingMode.OneWayToSource);
 
+        public static readonly BindableProperty HoverStatusProperty = BindableProperty.CreateAttached(
+            nameof(HoverStatus),
+            typeof(HoverStatus),
+            typeof(TouchEff),
+            HoverStatus.Exited,
+            BindingMode.OneWayToSource);
+
+        public static readonly BindableProperty HoverStateProperty = BindableProperty.CreateAttached(
+            nameof(HoverState),
+            typeof(HoverState),
+            typeof(TouchEff),
+            HoverState.Regular,
+            BindingMode.OneWayToSource);
+
         public static readonly BindableProperty RegularBackgroundColorProperty = BindableProperty.CreateAttached(
             nameof(RegularBackgroundColor),
+            typeof(Color),
+            typeof(TouchEff),
+            default(Color),
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredBackgroundColorProperty = BindableProperty.CreateAttached(
+            nameof(HoveredBackgroundColor),
             typeof(Color),
             typeof(TouchEff),
             default(Color),
@@ -89,6 +118,17 @@ namespace TouchEffect
                 bindable.GetTouchEff()?.ForceUpdateState();
             });
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredOpacityProperty = BindableProperty.CreateAttached(
+            nameof(HoveredOpacity),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
         public static readonly BindableProperty PressedOpacityProperty = BindableProperty.CreateAttached(
             nameof(PressedOpacity),
             typeof(double),
@@ -104,6 +144,17 @@ namespace TouchEffect
             typeof(double),
             typeof(TouchEff),
             1.0,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredScaleProperty = BindableProperty.CreateAttached(
+            nameof(HoveredScale),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
             propertyChanged: (bindable, oldValue, newValue) =>
             {
                 bindable.GetTouchEff()?.ForceUpdateState();
@@ -129,6 +180,17 @@ namespace TouchEffect
                 bindable.GetTouchEff()?.ForceUpdateState();
             });
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredTranslationXProperty = BindableProperty.CreateAttached(
+            nameof(HoveredTranslationX),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
         public static readonly BindableProperty PressedTranslationXProperty = BindableProperty.CreateAttached(
             nameof(PressedTranslationX),
             typeof(double),
@@ -144,6 +206,17 @@ namespace TouchEffect
             typeof(double),
             typeof(TouchEff),
             0.0,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredTranslationYProperty = BindableProperty.CreateAttached(
+            nameof(HoveredTranslationY),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
             propertyChanged: (bindable, oldValue, newValue) =>
             {
                 bindable.GetTouchEff()?.ForceUpdateState();
@@ -169,6 +242,17 @@ namespace TouchEffect
                 bindable.GetTouchEff()?.ForceUpdateState();
             });
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredRotationProperty = BindableProperty.CreateAttached(
+            nameof(HoveredRotation),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
         public static readonly BindableProperty PressedRotationProperty = BindableProperty.CreateAttached(
             nameof(PressedRotation),
             typeof(double),
@@ -189,6 +273,17 @@ namespace TouchEffect
                 bindable.GetTouchEff()?.ForceUpdateState();
             });
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredRotationXProperty = BindableProperty.CreateAttached(
+            nameof(HoveredRotationX),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
         public static readonly BindableProperty PressedRotationXProperty = BindableProperty.CreateAttached(
             nameof(PressedRotationX),
             typeof(double),
@@ -204,6 +299,17 @@ namespace TouchEffect
             typeof(double),
             typeof(TouchEff),
             0.0,
+            propertyChanged: (bindable, oldValue, newValue) =>
+            {
+                bindable.GetTouchEff()?.ForceUpdateState();
+            });
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredRotationYProperty = BindableProperty.CreateAttached(
+            nameof(HoveredRotationY),
+            typeof(double),
+            typeof(TouchEff),
+            double.NegativeInfinity,
             propertyChanged: (bindable, oldValue, newValue) =>
             {
                 bindable.GetTouchEff()?.ForceUpdateState();
@@ -237,8 +343,22 @@ namespace TouchEffect
             typeof(TouchEff),
             default(int));
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredAnimationDurationProperty = BindableProperty.CreateAttached(
+            nameof(HoveredAnimationDuration),
+            typeof(int),
+            typeof(TouchEff),
+            default(int));
+
         public static readonly BindableProperty RegularAnimationEasingProperty = BindableProperty.CreateAttached(
             nameof(RegularAnimationEasing),
+            typeof(Easing),
+            typeof(TouchEff),
+            null);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static readonly BindableProperty HoveredAnimationEasingProperty = BindableProperty.CreateAttached(
+            nameof(HoveredAnimationEasing),
             typeof(Easing),
             typeof(TouchEff),
             null);
@@ -264,6 +384,39 @@ namespace TouchEffect
                 bindable.GetTouchEff()?.ForceUpdateState(false);
             });
 
+        /// <summary>
+        /// Android only
+        /// </summary>
+        public static readonly BindableProperty DisallowTouchThresholdProperty = BindableProperty.CreateAttached(
+            nameof(DisallowTouchThreshold),
+            typeof(int),
+            typeof(TouchEff),
+            default(int));
+
+        public static readonly BindableProperty NativeAnimationProperty = BindableProperty.CreateAttached(
+            nameof(NativeAnimation),
+            typeof(bool),
+            typeof(TouchEff),
+            false);
+
+        public static readonly BindableProperty NativeAnimationColorProperty = BindableProperty.CreateAttached(
+            nameof(NativeAnimationColor),
+            typeof(Color),
+            typeof(TouchEff),
+            Color.Default);
+
+        public static readonly BindableProperty NativeAnimationRadiusProperty = BindableProperty.CreateAttached(
+            nameof(NativeAnimationRadius),
+            typeof(int),
+            typeof(TouchEff),
+            -1);
+
+        public static readonly BindableProperty NativeAnimationShadowRadiusProperty = BindableProperty.CreateAttached(
+            nameof(NativeAnimationShadowRadius),
+            typeof(int),
+            typeof(TouchEff),
+            -1);
+
         public static ICommand GetCommand(BindableObject bindable)
             => bindable.GetValue(CommandProperty) as ICommand;
 
@@ -288,10 +441,30 @@ namespace TouchEffect
         public static void SetState(BindableObject bindable, TouchState value)
             => bindable.SetValue(StateProperty, value);
 
+        public static HoverStatus GetHoverStatus(BindableObject bindable)
+            => (HoverStatus)bindable.GetValue(HoverStatusProperty);
+
+        public static void SetHoverStatus(BindableObject bindable, HoverStatus value)
+            => bindable.SetValue(HoverStatusProperty, value);
+
+        public static HoverState GetHoverState(BindableObject bindable)
+            => (HoverState)bindable.GetValue(HoverStateProperty);
+
+        public static void SetHoverState(BindableObject bindable, HoverState value)
+            => bindable.SetValue(HoverStateProperty, value);
+
         public static Color GetRegularBackgroundColor(BindableObject bindable)
             => (Color)bindable.GetValue(RegularBackgroundColorProperty);
 
         public static void SetRegularBackgroundColor(BindableObject bindable, Color value)
+            => bindable.SetValue(RegularBackgroundColorProperty, value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static Color GetHoveredBackgroundColor(BindableObject bindable)
+            => (Color)bindable.GetValue(RegularBackgroundColorProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredBackgroundColor(BindableObject bindable, Color value)
             => bindable.SetValue(RegularBackgroundColorProperty, value);
 
         public static Color GetPressedBackgroundColor(BindableObject bindable)
@@ -306,6 +479,14 @@ namespace TouchEffect
         public static void SetRegularOpacity(BindableObject bindable, double value)
             => bindable.SetValue(RegularOpacityProperty, value);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredOpacity(BindableObject bindable)
+            => (double)bindable.GetValue(RegularOpacityProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredOpacity(BindableObject bindable, double value)
+            => bindable.SetValue(RegularOpacityProperty, value);
+
         public static double GetPressedOpacity(BindableObject bindable)
             => (double)bindable.GetValue(PressedOpacityProperty);
 
@@ -316,6 +497,14 @@ namespace TouchEffect
             => (double)bindable.GetValue(RegularScaleProperty);
 
         public static void SetRegularScale(BindableObject bindable, double value)
+            => bindable.SetValue(RegularScaleProperty, value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredScale(BindableObject bindable)
+            => (double)bindable.GetValue(RegularScaleProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredScale(BindableObject bindable, double value)
             => bindable.SetValue(RegularScaleProperty, value);
 
         public static double GetPressedScale(BindableObject bindable)
@@ -330,6 +519,14 @@ namespace TouchEffect
         public static void SetRegularTranslationX(BindableObject bindable, double value)
             => bindable.SetValue(RegularTranslationXProperty, value);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredTranslationX(BindableObject bindable)
+            => (double)bindable.GetValue(RegularTranslationXProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredTranslationX(BindableObject bindable, double value)
+            => bindable.SetValue(RegularTranslationXProperty, value);
+
         public static double GetPressedTranslationX(BindableObject bindable)
             => (double)bindable.GetValue(PressedTranslationXProperty);
 
@@ -340,6 +537,14 @@ namespace TouchEffect
             => (double)bindable.GetValue(RegularTranslationYProperty);
 
         public static void SetRegularTranslationY(BindableObject bindable, double value)
+            => bindable.SetValue(RegularTranslationYProperty, value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredTranslationY(BindableObject bindable)
+            => (double)bindable.GetValue(RegularTranslationYProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredTranslationY(BindableObject bindable, double value)
             => bindable.SetValue(RegularTranslationYProperty, value);
 
         public static double GetPressedTranslationY(BindableObject bindable)
@@ -354,6 +559,14 @@ namespace TouchEffect
         public static void SetRegularRotation(BindableObject bindable, double value)
             => bindable.SetValue(RegularRotationProperty, value);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredRotation(BindableObject bindable)
+            => (double)bindable.GetValue(RegularRotationProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredRotation(BindableObject bindable, double value)
+            => bindable.SetValue(RegularRotationProperty, value);
+
         public static double GetPressedRotation(BindableObject bindable)
             => (double)bindable.GetValue(PressedRotationProperty);
 
@@ -364,6 +577,14 @@ namespace TouchEffect
             => (double)bindable.GetValue(RegularRotationXProperty);
 
         public static void SetRegularRotationX(BindableObject bindable, double value)
+            => bindable.SetValue(RegularRotationXProperty, value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredRotationX(BindableObject bindable)
+            => (double)bindable.GetValue(RegularRotationXProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredRotationX(BindableObject bindable, double value)
             => bindable.SetValue(RegularRotationXProperty, value);
 
         public static double GetPressedRotationX(BindableObject bindable)
@@ -378,6 +599,14 @@ namespace TouchEffect
         public static void SetRegularRotationY(BindableObject bindable, double value)
             => bindable.SetValue(RegularRotationYProperty, value);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static double GetHoveredRotationY(BindableObject bindable)
+            => (double)bindable.GetValue(RegularRotationYProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredRotationY(BindableObject bindable, double value)
+            => bindable.SetValue(RegularRotationYProperty, value);
+
         public static double GetPressedRotationY(BindableObject bindable)
             => (double)bindable.GetValue(PressedRotationYProperty);
 
@@ -390,6 +619,14 @@ namespace TouchEffect
         public static void SetRegularAnimationDuration(BindableObject bindable, int value)
             => bindable.SetValue(RegularAnimationDurationProperty, value);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static int GetHoveredAnimationDuration(BindableObject bindable)
+            => (int)bindable.GetValue(RegularAnimationDurationProperty);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredAnimationDuration(BindableObject bindable, int value)
+            => bindable.SetValue(RegularAnimationDurationProperty, value);
+
         public static int GetPressedAnimationDuration(BindableObject bindable)
             => (int)bindable.GetValue(PressedAnimationDurationProperty);
 
@@ -400,6 +637,14 @@ namespace TouchEffect
             => bindable.GetValue(RegularAnimationEasingProperty) as Easing;
 
         public static void SetRegularAnimationEasing(BindableObject bindable, Easing value)
+            => bindable.SetValue(RegularAnimationEasingProperty, value);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static Easing GetHoveredAnimationEasing(BindableObject bindable)
+            => bindable.GetValue(RegularAnimationEasingProperty) as Easing;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void SetHoveredAnimationEasing(BindableObject bindable, Easing value)
             => bindable.SetValue(RegularAnimationEasingProperty, value);
 
         public static Easing GetPressedAnimationEasing(BindableObject bindable)
@@ -420,6 +665,42 @@ namespace TouchEffect
         public static void SetIsToggled(BindableObject bindable, bool? value)
             => bindable.SetValue(IsToggledProperty, value);
 
+        /// <summary>
+        /// Android only
+        /// </summary>
+        public static int GetDisallowTouchThreshold(BindableObject bindable)
+            => (int)bindable.GetValue(DisallowTouchThresholdProperty);
+
+        /// <summary>
+        /// Android only
+        /// </summary>
+        public static void SetDisallowTouchThreshold(BindableObject bindable, int value)
+            => bindable.SetValue(DisallowTouchThresholdProperty, value);
+
+        public static bool GetNativeAnimation(BindableObject bindable)
+            => (bool)bindable.GetValue(NativeAnimationProperty);
+
+        public static void SetNativeAnimation(BindableObject bindable, bool value)
+            => bindable.SetValue(NativeAnimationProperty, value);
+
+        public static Color GetNativeAnimationColor(BindableObject bindable)
+            => (Color)bindable.GetValue(NativeAnimationColorProperty);
+
+        public static void SetNativeAnimationColor(BindableObject bindable, Color value)
+            => bindable.SetValue(NativeAnimationColorProperty, value);
+
+        public static int GetNativeAnimationRadius(BindableObject bindable)
+            => (int)bindable.GetValue(NativeAnimationRadiusProperty);
+
+        public static void SetNativeAnimationRadius(BindableObject bindable, int value)
+            => bindable.SetValue(NativeAnimationRadiusProperty, value);
+
+        public static int GetNativeAnimationShadowRadius(BindableObject bindable)
+            => (int)bindable.GetValue(NativeAnimationShadowRadiusProperty);
+
+        public static void SetNativeAnimationShadowRadius(BindableObject bindable, int value)
+            => bindable.SetValue(NativeAnimationShadowRadiusProperty, value);
+
         public ICommand Command => GetCommand(Control);
 
         public object CommandParameter => GetCommandParameter(Control);
@@ -436,35 +717,84 @@ namespace TouchEffect
             set => SetState(Control, value);
         }
 
+        public HoverStatus HoverStatus
+        {
+            get => GetHoverStatus(Control);
+            set => SetHoverStatus(Control, value);
+        }
+
+        public HoverState HoverState
+        {
+            get => GetHoverState(Control);
+            set => SetHoverState(Control, value);
+        }
+
+        /// <summary>
+        /// Android only
+        /// </summary>
+        public int DisallowTouchThreshold => GetDisallowTouchThreshold(Control);
+
+        public bool NativeAnimation => GetNativeAnimation(Control);
+
+        public Color NativeAnimationColor => GetNativeAnimationColor(Control);
+
+        public int NativeAnimationRadius => GetNativeAnimationRadius(Control);
+
+        public int NativeAnimationShadowRadius => GetNativeAnimationShadowRadius(Control);
+
         public Color RegularBackgroundColor => GetRegularBackgroundColor(Control);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public Color HoveredBackgroundColor => GetHoveredBackgroundColor(Control);
 
         public Color PressedBackgroundColor => GetPressedBackgroundColor(Control);
 
         public double RegularOpacity => GetRegularOpacity(Control);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredOpacity => GetHoveredOpacity(Control);
+
         public double PressedOpacity => GetPressedOpacity(Control);
 
         public double RegularScale => GetRegularScale(Control);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredScale => GetHoveredScale(Control);
 
         public double PressedScale => GetPressedScale(Control);
 
         public double RegularTranslationX => GetRegularTranslationX(Control);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredTranslationX => GetHoveredTranslationX(Control);
+
         public double PressedTranslationX => GetPressedTranslationX(Control);
 
         public double RegularTranslationY => GetRegularTranslationY(Control);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredTranslationY => GetHoveredTranslationY(Control);
 
         public double PressedTranslationY => GetPressedTranslationY(Control);
 
         public double RegularRotation => GetRegularRotation(Control);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredRotation => GetHoveredRotation(Control);
+
         public double PressedRotation => GetPressedRotation(Control);
 
         public double RegularRotationX => GetRegularRotationX(Control);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredRotationX => GetHoveredRotationX(Control);
+
         public double PressedRotationX => GetPressedRotationX(Control);
 
         public double RegularRotationY => GetRegularRotationY(Control);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public double HoveredRotationY => GetHoveredRotationY(Control);
 
         public double PressedRotationY => GetPressedRotationY(Control);
 
@@ -474,7 +804,13 @@ namespace TouchEffect
 
         public int RegularAnimationDuration => GetRegularAnimationDuration(Control);
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public int HoveredAnimationDuration => GetHoveredAnimationDuration(Control);
+
         public Easing RegularAnimationEasing => GetRegularAnimationEasing(Control);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public Easing HoveredAnimationEasing => GetHoveredAnimationEasing(Control);
 
         public int RippleCount => GetRippleCount(Control);
 
@@ -488,11 +824,23 @@ namespace TouchEffect
         public bool IsCompletedSet => Completed != null;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public VisualElement Control { get; set; }
+        public VisualElement Control
+        {
+            get => _control;
+            set
+            {
+                _visualManager.AbortAnimations(this);
+                _control = value;
+            }
+        }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void HandleTouch(TouchStatus status)
             => _visualManager.HandleTouch(this, status);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void HandleHover(HoverStatus status)
+            => _visualManager.HandleHover(this, status);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void RaiseStateChanged()
@@ -501,6 +849,14 @@ namespace TouchEffect
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void RaiseStatusChanged()
             => StatusChanged?.Invoke(Control, new TouchStatusChangedEventArgs(Status));
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void RaiseHoverStateChanged()
+            => HoverStateChanged?.Invoke(Control, new HoverStateChangedEventArgs(HoverState));
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void RaiseHoverStatusChanged()
+            => HoverStatusChanged?.Invoke(Control, new HoverStatusChangedEventArgs(HoverStatus));
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void RaiseCompleted()
@@ -513,11 +869,11 @@ namespace TouchEffect
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void ForceUpdateState(bool animated = true)
         {
-            if(Control == null)
+            if (Control == null)
             {
                 return;
             }
-            _visualManager.ChangeStateAsync(this, State, animated);
+            _visualManager.ChangeStateAsync(this, animated);
         }
 
         protected override void OnDetached()

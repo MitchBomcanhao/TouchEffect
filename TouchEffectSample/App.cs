@@ -36,6 +36,21 @@ namespace TouchEffectSample
                                 Command = new Command(() => MainPage.Navigation.PushAsync(Device.RuntimePlatform == Device.Android 
                                     ? (Page) new AndroidTogglePage() 
                                     : new TogglePage()))
+                            },
+                            new Button
+                            {
+                                Text = "(Hover sample)",
+                                Command = new Command(() => MainPage.Navigation.PushAsync(new HoverPage()))
+                            },
+                            new Button
+                            {
+                                Text = "(Scroll sample)",
+                                Command = new Command(() => MainPage.Navigation.PushAsync(new ScrollPage()))
+                            },
+                            new Button
+                            {
+                                Text = "(Native animation sample)",
+                                Command = new Command(() => MainPage.Navigation.PushAsync(new NativeAnimationPage()))
                             }
                         }
 					}

@@ -18,6 +18,7 @@ namespace TouchEffect.Mac
 
         private NSGestureRecognizer _gesture;
         private TouchEff _effect;
+        private MouseTrackingView _mouseTrackingView;
 
         protected override void OnAttached()
         {
@@ -28,16 +29,64 @@ namespace TouchEffect.Mac
             {
                 _gesture = new TouchNSClickGestureRecognizer(_effect, Container);
                 Container.AddGestureRecognizer(_gesture);
+                Container.AddSubview(_mouseTrackingView = new MouseTrackingView(_effect));
             }
         }
 
         protected override void OnDetached()
         {
+            _mouseTrackingView?.RemoveFromSuperview();
+            _mouseTrackingView?.Dispose();
+            _mouseTrackingView = null;
             _effect.Control = null;
             _effect = null;
-            Container?.RemoveGestureRecognizer(_gesture);
+            if (_gesture != null)
+            {
+                Container?.RemoveGestureRecognizer(_gesture);
+            }
             _gesture?.Dispose();
             _gesture = null;
+        }
+    }
+
+    internal sealed class MouseTrackingView : NSView
+    {
+        private NSTrackingArea _trackingArea;
+        private TouchEff _effect;
+
+        public MouseTrackingView(TouchEff effect)
+        {
+            _effect = effect;
+            AutoresizingMask = NSViewResizingMask.HeightSizable | NSViewResizingMask.WidthSizable;
+        }
+
+        public override void UpdateTrackingAreas()
+        {
+            if (_trackingArea != null)
+            {
+                RemoveTrackingArea(_trackingArea);
+                _trackingArea.Dispose();
+            }
+            _trackingArea = new NSTrackingArea(Frame, NSTrackingAreaOptions.MouseEnteredAndExited | NSTrackingAreaOptions.ActiveAlways, this, null);
+            AddTrackingArea(_trackingArea);
+        }
+
+        public override void MouseEntered(NSEvent theEvent) => _effect.HandleHover(HoverStatus.Entered);
+
+        public override void MouseExited(NSEvent theEvent) => _effect.HandleHover(HoverStatus.Exited);
+
+        protected override void Dispose(bool disposing)
+        {
+            if(disposing)
+            {
+                if(_trackingArea != null)
+                {
+                    RemoveTrackingArea(_trackingArea);
+                    _trackingArea.Dispose();
+                }
+                _effect = null;
+            }
+            base.Dispose(disposing);
         }
     }
 
@@ -58,7 +107,7 @@ namespace TouchEffect.Mac
             {
                 var frame = _container.Frame;
                 var parent = _container.Superview;
-                while(parent != null)
+                while (parent != null)
                 {
                     frame = new CoreGraphics.CGRect(frame.X + parent.Frame.X, frame.Y + parent.Frame.Y, frame.Width, frame.Height);
                     parent = parent.Superview;
@@ -75,13 +124,34 @@ namespace TouchEffect.Mac
 
         public override void MouseUp(NSEvent mouseEvent)
         {
-            var touchPoint = mouseEvent.LocationInWindow.ToPoint();
-            var status = ViewRect.Contains(touchPoint)
-                ? TouchStatus.Completed
-                : TouchStatus.Canceled;
+            if (_effect.HoverStatus == HoverStatus.Entered)
+            {
+                var touchPoint = mouseEvent.LocationInWindow.ToPoint();
+                var status = ViewRect.Contains(touchPoint)
+                    ? TouchStatus.Completed
+                    : TouchStatus.Canceled;
 
-            _effect.HandleTouch(status);
+                _effect.HandleTouch(status);
+            }
             base.MouseUp(mouseEvent);
+        }
+
+        public override void MouseDragged(NSEvent mouseEvent)
+        {
+            var status = ViewRect.Contains(mouseEvent.LocationInWindow.ToPoint()) ? TouchStatus.Started : TouchStatus.Canceled;
+
+            if ((status == TouchStatus.Canceled && _effect.HoverStatus == HoverStatus.Entered) ||
+                (status == TouchStatus.Started && _effect.HoverStatus == HoverStatus.Exited))
+            {
+                _effect.HandleHover(status == TouchStatus.Started ? HoverStatus.Entered : HoverStatus.Exited);
+            }
+
+            if (_effect.Status != status)
+            {
+                _effect.HandleTouch(status);
+            }
+
+            base.MouseDragged(mouseEvent);
         }
 
         protected override void Dispose(bool disposing)
